@@ -477,6 +477,17 @@ function TopBand({ view, goto, search, setSearch, overall, overallText, menuOpen
 /* --------------------------------- home ----------------------------------- */
 
 function Home({ services, allServices, counts, overall, overallText, catFilter, setCatFilter, ufFilter, setUfFilter, recentIncidents, totalRecentReports, goto, onReport }) {
+  const featuredServices = useMemo(() => {
+    const priority = ["Portal Nacional NF-e", "CT-e", "MDF-e", "CT-e OS", "Portal Nacional CT-e", "Portal Nacional MDF-e"];
+    return [...services].sort((a, b) => {
+      const positionA = priority.indexOf(a.name);
+      const positionB = priority.indexOf(b.name);
+      const rankA = positionA === -1 ? priority.length : positionA;
+      const rankB = positionB === -1 ? priority.length : positionB;
+      return rankA - rankB;
+    });
+  }, [services]);
+
   return (
     <div className="ls-stack">
       <p className="ls-subtitle">Monitore a disponibilidade dos principais serviços que impactam o transporte e a logística no Brasil.</p>
@@ -499,7 +510,7 @@ function Home({ services, allServices, counts, overall, overallText, catFilter, 
       </div>
 
       <div className="ls-grid">
-        {services.slice(0, 24).map((s) => (
+        {featuredServices.slice(0, 24).map((s) => (
           <ServiceCard key={s.id} service={s} onOpen={() => goto("service", s.id)} onReport={() => onReport(s.id)} />
         ))}
         {services.length === 0 && <EmptyState text="Nenhum serviço encontrado para os filtros selecionados." />}
