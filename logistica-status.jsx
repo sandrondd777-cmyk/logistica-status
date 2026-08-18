@@ -35,7 +35,7 @@ const PROBLEM_TYPES = [
 ];
 
 const STATUS_META = {
-  normal:        { label: "Operando normalmente",  short: "Normal",         cls: "st-green"  },
+  normal:        { label: "Endpoint oficial acessível", short: "Acessível", cls: "st-green"  },
   instabilidade: { label: "Possível instabilidade", short: "Instabilidade", cls: "st-amber"  },
   indisponivel:  { label: "Indisponível",           short: "Indisponível",  cls: "st-red"    },
   sem_dados:     { label: "Sem dados",              short: "Sem dados",     cls: "st-gray"   },
@@ -317,9 +317,9 @@ export default function App() {
     return c;
   }, [services]);
 
-  const overall = counts.indisponivel > 0 ? "indisponivel" : counts.instabilidade > 0 ? "instabilidade" : "normal";
-  const overallText = overall === "normal" ? "Todos os sistemas operando normalmente"
-    : overall === "instabilidade" ? "Existem instabilidades" : "Existem indisponibilidades";
+  const overall = counts.indisponivel > 0 ? "indisponivel" : counts.instabilidade > 0 ? "instabilidade" : counts.normal > 0 ? "normal" : "sem_dados";
+  const overallText = overall === "normal" ? "Há endpoints oficiais acessíveis"
+    : overall === "instabilidade" ? "Existem instabilidades" : overall === "indisponivel" ? "Existem indisponibilidades" : "Aguardando consulta dos endpoints oficiais";
 
   const recentIncidents = useMemo(() => {
     return [...history].sort((a, b) => new Date(b.checked_at) - new Date(a.checked_at)).slice(0, 6);
@@ -482,7 +482,7 @@ function Home({ services, allServices, counts, overall, overallText, catFilter, 
       <p className="ls-subtitle">Monitore a disponibilidade dos principais serviços que impactam o transporte e a logística no Brasil.</p>
 
       <div className="ls-counter-strip">
-        <CounterPill status="normal" n={counts.normal} label="normais" />
+        <CounterPill status="normal" n={counts.normal} label="endpoints acessíveis" />
         <CounterPill status="instabilidade" n={counts.instabilidade} label="em instabilidade" />
         <CounterPill status="indisponivel" n={counts.indisponivel} label="indisponíveis" />
         <div className="ls-counter-pill ls-counter-reports">
@@ -560,6 +560,7 @@ function ServiceCard({ service, onOpen, onReport }) {
       </div>
       <div className="ls-card-actions">
         <button className="ls-btn-sm ls-btn-outline" onClick={onOpen}>Ver detalhes</button>
+        {service.official_url && <a className="ls-btn-sm ls-btn-outline" href={service.official_url} target="_blank" rel="noreferrer">Fonte oficial <ExternalLink size={12} /></a>}
         <button className="ls-btn-sm ls-btn-ghost" onClick={onReport}>Relatar</button>
       </div>
     </div>
