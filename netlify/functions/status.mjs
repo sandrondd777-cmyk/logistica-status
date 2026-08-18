@@ -10,6 +10,7 @@ const UF_LIST = [
 
 const NFE_AVAILABILITY_URL = "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1&tipoC=&versao=0.00";
 const NFE_WEBSERVICES_URL = "https://www.nfe.fazenda.gov.br/portal/webservices.aspx?AspxAutoDetectCookieSupport=1";
+const CTE_AVAILABILITY_URL = "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=";
 
 function service(name, category, extra = {}) {
   return {
@@ -45,14 +46,14 @@ export default async () => {
   const services = UF_LIST.map(([state, label]) => service(`SEFAZ ${state}`, "fiscal", {
     id: `sefaz-${state.toLowerCase()}`,
     state,
-    official_url: NFE_WEBSERVICES_URL,
+    official_url: NFE_AVAILABILITY_URL,
     monitoring_url: NFE_AVAILABILITY_URL,
     description: `Disponibilidade da NF-e para ${label}. A situação é exibida somente após confirmação na fonte oficial.`
   }));
 
   services.push(
     service("Portal Nacional NF-e", "fiscal", { official_url: NFE_AVAILABILITY_URL, monitoring_url: NFE_AVAILABILITY_URL, description: "Visão oficial de disponibilidade dos webservices da NF-e." }),
-    service("CT-e", "fiscal", { official_url: "https://www.cte.fazenda.gov.br/", description: "Portal Nacional do Conhecimento de Transporte Eletrônico." }),
+    service("CT-e", "fiscal", { official_url: CTE_AVAILABILITY_URL, description: "Disponibilidade oficial do Conhecimento de Transporte Eletrônico." }),
     service("MDF-e", "fiscal", { official_url: "https://www.mdfe.fazenda.gov.br/", description: "Portal Nacional do Manifesto Eletrônico de Documentos Fiscais." }),
     service("ANTT / RNTRC", "antt", { official_url: "https://dados.antt.gov.br/dataset/registro-nacional-de-transportadores-rodoviarios-de-cargas-rntrc", description: "Dados abertos oficiais da ANTT; não há status operacional público consolidado." }),
     service("Pix", "pagamentos", { official_url: "https://www.bcb.gov.br/estabilidadefinanceira/pix", description: "Fonte institucional do Banco Central; não há um status público único para todos os participantes." })

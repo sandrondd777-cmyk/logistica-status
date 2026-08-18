@@ -77,7 +77,7 @@ function seedServices() {
   UF_LIST.forEach(([uf]) => {
     push(`SEFAZ ${uf}`, "fiscal", {
       state: uf,
-      official_url: `https://www.google.com/search?q=SEFAZ+${uf}+portal+oficial`,
+      official_url: "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1",
       status: uf === "RJ" ? "instabilidade" : "normal",
       incident_description: uf === "RJ"
         ? "Foram identificadas falhas intermitentes na autorização de documentos fiscais eletrônicos."
@@ -87,12 +87,12 @@ function seedServices() {
     });
   });
 
-  push("CT-e", "fiscal", { official_url: "https://www.cte.fazenda.gov.br" });
-  push("CT-e OS", "fiscal", { official_url: "https://www.cte.fazenda.gov.br" });
+  push("CT-e", "fiscal", { official_url: "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=" });
+  push("CT-e OS", "fiscal", { official_url: "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=" });
   push("MDF-e", "fiscal", { official_url: "https://www.mdfe.fazenda.gov.br" });
   push("NF-e", "fiscal", { official_url: "https://www.nfe.fazenda.gov.br" });
   push("NFS-e", "fiscal", { official_url: "https://www.gov.br/nfse" });
-  push("Portal Nacional CT-e", "fiscal", { official_url: "https://www.cte.fazenda.gov.br" });
+  push("Portal Nacional CT-e", "fiscal", { official_url: "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=" });
   push("Portal Nacional MDF-e", "fiscal", { official_url: "https://www.mdfe.fazenda.gov.br" });
   push("SVRS", "fiscal", { official_url: "https://www.sefaz.rs.gov.br/svrs" });
   push("SVSP", "fiscal", { official_url: "https://www.fazenda.sp.gov.br" });
