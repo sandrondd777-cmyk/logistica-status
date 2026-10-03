@@ -9,3 +9,4 @@
 
 /* Ajustes de contraste do painel interno. */
 :root{color:#183247;background:#f5f7fa}body{background:#f5f7fa}.support-page{min-height:100vh;color:#183247}.support-page h2,.support-page h3{color:#183247}
+.history-chart{margin:14px 0 4px}.history-chart svg{display:block;width:100%;height:42px;overflow:visible}.history-chart polyline{fill:none;stroke:#08a9bc;stroke-width:2;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}.history-chart circle{fill:#08a9bc}.history-caption{margin:4px 0 0!important;min-height:0!important;color:#627d98!important;font-size:10px!important}

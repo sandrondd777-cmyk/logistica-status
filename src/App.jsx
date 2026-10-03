@@ -1,5 +1,33 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "./styles.css";
+
+const HISTORY_KEY = "logistica-status-history-v1";
+
+function loadServiceHistory() {
+  try {
+    return JSON.parse(window.localStorage.getItem(HISTORY_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function HistorySparkline({ serviceName, samples }) {
+  const width = 260;
+  const height = 40;
+  const points = samples.map((sample, index) => {
+    const x = samples.length > 1 ? (index / (samples.length - 1)) * width : width;
+    return `${x},${sample.reachable ? 6 : 34}`;
+  }).join(" ");
+  const available = samples.filter((sample) => sample.reachable).length;
+
+  return <div className="history-chart" role="img" aria-label={`${serviceName}: ${available} de ${samples.length} verificações recentes responderam`}>
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
+      {samples.length > 1 && <polyline points={points} />}
+      {samples.length === 1 && <circle cx={width} cy={samples[0].reachable ? 6 : 34} r="3" />}
+    </svg>
+    <p className="history-caption">{samples.length > 1 ? `Disponibilidade · ${samples.length} verificações` : "Coletando histórico de disponibilidade…"}</p>
+  </div>;
+}
 
 const STATUS = {
   aberto: "Aberto",
@@ -17,6 +45,7 @@ async function readJson(url, options) {
 
 export default function App() {
   const [services, setServices] = useState([]);
+  const [serviceHistory, setServiceHistory] = useState(loadServiceHistory);
   const [incidents, setIncidents] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,7 +61,19 @@ export default function App() {
         readJson("/.netlify/functions/status"),
         readJson("/.netlify/functions/reports"),
       ]);
-      setServices(statusData.services || []);
+      const latestServices = statusData.services || [];
+      setServices(latestServices);
+      setServiceHistory((previous) => {
+        const next = { ...previous };
+        for (const service of latestServices) {
+          const samples = next[service.id] || [];
+          const checkedAt = service.probe?.checkedAt || new Date().toISOString();
+          if (samples.at(-1)?.checkedAt !== checkedAt) {
+            next[service.id] = [...samples, { checkedAt, reachable: Boolean(service.probe?.reachable) }].slice(-60);
+          }
+        }
+        return next;
+      });
       setIncidents(reportData.incidents || []);
       setServiceId((current) => current || statusData.services?.[0]?.id || "");
     } catch (e) {
@@ -45,6 +86,14 @@ export default function App() {
     const timer = window.setInterval(refresh, 60_000);
     return () => window.clearInterval(timer);
   }, [refresh]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(HISTORY_KEY, JSON.stringify(serviceHistory));
+    } catch {
+      // O painel continua funcionando se o navegador bloquear o armazenamento local.
+    }
+  }, [serviceHistory]);
 
   async function submitReport(event) {
     event.preventDefault();
@@ -101,6 +150,7 @@ export default function App() {
         <div className="source-meta"><strong>{service.probe?.reachable ? "Portal acessível" : "Sem resposta do portal"}</strong>
           <span>{service.probe?.httpStatus ? `HTTP ${service.probe.httpStatus}` : ""}</span></div>
         <small>Verificado: {service.probe?.checkedAt ? new Date(service.probe.checkedAt).toLocaleString("pt-BR") : "aguardando"}</small>
+        <HistorySparkline serviceName={service.name} samples={serviceHistory[service.id] || []} />
         <a href={service.url} target="_blank" rel="noreferrer">Abrir fonte oficial ↗</a>
       </article>)}</div>
     </section>
