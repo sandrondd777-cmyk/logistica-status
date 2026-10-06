@@ -1,5 +1,5 @@
 const SOURCES = [
-  { id: "nfe", name: "Portal de disponibilidade NF-e", url: "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1&tipoC=&versao=0.00", category: "Documentos fiscais", scope: "Fonte oficial: painel de disponibilidade dos web services NF-e." },
+  { id: "nfe", name: "Portal de disponibilidade NF-e", url: "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1&tipoConteudo=P2c98tUpxrI%3D&versao=0.00", category: "Documentos fiscais", scope: "Fonte oficial: painel de disponibilidade dos web services NF-e." },
   { id: "cte", name: "Portal de disponibilidade CT-e", url: "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=", category: "Documentos fiscais", scope: "Fonte oficial: painel de disponibilidade CT-e." },
   { id: "mdfe", name: "Portal MDF-e", url: "https://dfe-portal.svrs.rs.gov.br/MDFE/Disponibilidade", category: "Documentos fiscais", scope: "Portal oficial; não publica um status consolidado nesta consulta." },
   { id: "antt", name: "ANTT / RNTRC", url: "https://consultapublica.antt.gov.br/", category: "Transporte / ANTT", scope: "Consulta pública de transportadores; não equivale a status operacional do serviço." },
