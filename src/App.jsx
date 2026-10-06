@@ -147,7 +147,7 @@ export default function App() {
         <div className="source-card-heading"><span className={`source-dot ${service.probe?.reachable ? "reachable" : "unreachable"}`} />
           <h3>{service.name}</h3></div>
         <p>{service.scope}</p>
-        <div className="source-meta"><strong>{service.probe?.reachable ? "Portal acessível" : "Sem resposta do portal"}</strong>
+        <div className="source-meta"><strong>{service.probe?.statusDescription || (service.probe?.reachable ? "Portal acessível" : "Sem resposta do portal")}</strong>
           <span>{service.probe?.httpStatus ? `HTTP ${service.probe.httpStatus}` : ""}</span></div>
         <small>Verificado: {service.probe?.checkedAt ? new Date(service.probe.checkedAt).toLocaleString("pt-BR") : "aguardando"}</small>
         <HistorySparkline serviceName={service.name} samples={serviceHistory[service.id] || []} />
