@@ -45,6 +45,7 @@ async function readJson(url, options) {
 
 export default function App() {
   const [services, setServices] = useState([]);
+  const [cteAvailability, setCteAvailability] = useState(null);
   const [serviceHistory, setServiceHistory] = useState(loadServiceHistory);
   const [incidents, setIncidents] = useState([]);
   const [error, setError] = useState("");
@@ -57,12 +58,14 @@ export default function App() {
   const refresh = useCallback(async () => {
     setError("");
     try {
-      const [statusData, reportData] = await Promise.all([
+      const [statusData, reportData, cteData] = await Promise.all([
         readJson("/.netlify/functions/status"),
         readJson("/.netlify/functions/reports"),
+        readJson("/.netlify/functions/cte-availability").catch((e) => ({ error: e.message, rows: [] })),
       ]);
       const latestServices = statusData.services || [];
       setServices(latestServices);
+      setCteAvailability(cteData);
       setServiceHistory((previous) => {
         const next = { ...previous };
         for (const service of latestServices) {
@@ -153,6 +156,18 @@ export default function App() {
         <HistorySparkline serviceName={service.name} samples={serviceHistory[service.id] || []} />
         <a href={service.url} target="_blank" rel="noreferrer">Abrir fonte oficial ↗</a>
       </article>)}</div>
+    </section>
+
+    <section className="support-section cte-availability-section">
+      <div className="support-section-title"><div><h2>{cteAvailability?.title || "Disponibilidade oficial CT-e"}</h2><p>Painel oficial do Portal CT-e.</p></div>
+        {cteAvailability?.checkedAt && <small>Última verificação: {cteAvailability.checkedAt}</small>}
+      </div>
+      {cteAvailability?.error && <p className="cte-availability-error">Falha ao consultar o painel oficial: {cteAvailability.error}</p>}
+      {cteAvailability?.rows?.length > 0 && <div className="cte-table-scroll"><table className="cte-availability-table"><thead><tr><th>Autorizador</th>{cteAvailability.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>
+        {cteAvailability.rows.map((row) => <tr key={row.authorizer}><th scope="row">{row.authorizer}</th>{row.services.map((service, index) => <td key={`${row.authorizer}-${index}`}><span className={`cte-state-dot ${service.state}`} title={service.value} aria-label={service.value} /></td>)}<td>{row.average}</td></tr>)}
+      </tbody></table></div>}
+      {!cteAvailability?.error && !cteAvailability?.rows?.length && <p className="support-empty">Aguardando dados do portal oficial.</p>}
+      <a href={cteAvailability?.sourceUrl || "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8="} target="_blank" rel="noreferrer">Abrir painel oficial CT-e ↗</a>
     </section>
 
     <div className="support-columns">

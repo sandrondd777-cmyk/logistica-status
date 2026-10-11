@@ -8,6 +8,35 @@ const SOURCES = [
   { id: "cloudflare", name: "Cloudflare", url: "https://www.cloudflarestatus.com/", probeUrl: "https://www.cloudflarestatus.com/api/v2/status.json", category: "Infraestrutura / CDN", scope: "Status consultado pela API oficial da Cloudflare; o cartão indica o status geral publicado pelo provedor." },
 ];
 
+const CTE_AVAILABILITY_URL = "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=";
+const CTE_COLUMNS = ["Recepção Sinc", "Status Serviço", "Recepção CT-e OS", "Recepção GTVE", "Recepção Evento", "Consulta Cadastro", "Tempo Médio"];
+
+function decodeHtml(value) {
+  return value.replace(/&nbsp;|&#160;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&#233;/gi, "é").replace(/&#225;/gi, "á").replace(/&#227;/gi, "ã").replace(/&#237;/gi, "í").replace(/&#243;/gi, "ó").replace(/&#250;/gi, "ú").replace(/&#234;/gi, "ê").replace(/&#231;/gi, "ç");
+}
+
+function parseCteAvailability(html) {
+  const table = html.match(/<table\b(?=[^>]*\bid=["']ctl00_ContentPlaceHolder1_gdvDisponibilidade["'])[^>]*>([\s\S]*?)<\/table>/i)?.[1];
+  if (!table) throw new Error("Tabela oficial de disponibilidade CT-e não encontrada.");
+  const caption = decodeHtml(table.match(/<caption\b[^>]*>([\s\S]*?)<\/caption>/i)?.[1] || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const checkedAt = caption.match(/Última Verificação:\s*([\d/]+\s+[\d:]+)/i)?.[1] || null;
+  const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].slice(1).map(([, row]) => {
+    const cells = [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(([, cell]) => {
+      const image = cell.match(/<img\b[^>]*src=["'][^"']*bola_(verde|vermelho|amarela)[^"']*["']/i)?.[1]?.toLowerCase();
+      const text = decodeHtml(cell.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+      return image ? { state: image === "verde" ? "operational" : image === "amarela" ? "unstable" : "down", value: image === "verde" ? "Operacional" : image === "amarela" ? "Instável" : "Indisponível" } : { state: text === "-" || !text ? "unavailable" : "info", value: text };
+    });
+    return cells.length ? { authorizer: cells[0].value, services: cells.slice(1, 7), average: cells[7]?.value || "-" } : null;
+  }).filter(Boolean);
+  return { title: "Visão Geral de Disponibilidade dos Serviços", checkedAt, columns: CTE_COLUMNS, rows, sourceUrl: CTE_AVAILABILITY_URL };
+}
+
+export async function fetchCteAvailability() {
+  const response = await fetch(CTE_AVAILABILITY_URL, { redirect: "follow", signal: AbortSignal.timeout(10000), headers: { "user-agent": "LogisticaStatus/1.0", accept: "text/html" } });
+  if (!response.ok) throw new Error(`Portal CT-e respondeu HTTP ${response.status}.`);
+  return parseCteAvailability(await response.text());
+}
+
 async function probe(source) {
   const checkedAt = new Date().toISOString();
   try {
