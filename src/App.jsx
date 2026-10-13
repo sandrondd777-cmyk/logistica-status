@@ -170,7 +170,7 @@ export default function App() {
         {nfeAvailability.rows.map((row) => <tr key={row.authorizer}><th scope="row">{row.authorizer}</th>{row.services.map((service, index) => <td key={`${row.authorizer}-${index}`}><span className={`cte-state-dot ${service.state}`} title={service.value} aria-label={service.value} /></td>)}<td>{row.average}</td></tr>)}
       </tbody></table></div>}
       {!nfeAvailability?.error && !nfeAvailability?.rows?.length && <p className="support-empty">Aguardando dados do portal oficial.</p>}
-      <a href={nfeAvailability?.sourceUrl || "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1&tipoConteudo=P2c98tUpxrI%3D&versao=0.00"} target="_blank" rel="noreferrer">Abrir painel oficial NF-e ↗</a>
+      <a href={nfeAvailability?.sourceUrl || "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?tipoConteudo=P2c98tUpxrI%3D&versao=0.00"} target="_blank" rel="noreferrer">Abrir painel oficial NF-e ↗</a>
     </section>
 
     <section className="support-section cte-availability-section">

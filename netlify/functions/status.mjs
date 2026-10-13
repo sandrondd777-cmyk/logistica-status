@@ -1,5 +1,5 @@
 const SOURCES = [
-  { id: "nfe", name: "Portal de disponibilidade NF-e", url: "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1&tipoConteudo=P2c98tUpxrI%3D&versao=0.00", category: "Documentos fiscais", scope: "Fonte oficial: painel de disponibilidade dos web services NF-e." },
+  { id: "nfe", name: "Portal de disponibilidade NF-e", url: "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?tipoConteudo=P2c98tUpxrI%3D&versao=0.00", category: "Documentos fiscais", scope: "Fonte oficial: painel de disponibilidade dos web services NF-e." },
   { id: "cte", name: "Portal de disponibilidade CT-e", url: "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=", category: "Documentos fiscais", scope: "Fonte oficial: painel de disponibilidade CT-e." },
   { id: "mdfe", name: "Portal MDF-e", url: "https://dfe-portal.svrs.rs.gov.br/MDFE/Disponibilidade", category: "Documentos fiscais", scope: "Portal oficial; não publica um status consolidado nesta consulta." },
   { id: "antt", name: "ANTT / RNTRC", url: "https://consultapublica.antt.gov.br/", category: "Transporte / ANTT", scope: "Consulta publica de transportadores; nao equivale a status operacional do servico." },
@@ -10,7 +10,7 @@ const SOURCES = [
 ];
 
 const CTE_AVAILABILITY_URL = "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=";
-const NFE_AVAILABILITY_URL = "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1&tipoConteudo=P2c98tUpxrI%3D&versao=0.00";
+const NFE_AVAILABILITY_URL = "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?tipoConteudo=P2c98tUpxrI%3D&versao=0.00";
 const NFE_COLUMNS = ["Autorização", "Retorno Autorização", "Inutilização", "Consulta Protocolo", "Status Serviço", "Consulta Cadastro", "Recepção Evento"];
 const CTE_COLUMNS = ["Recepção Sinc", "Status Serviço", "Recepção CT-e OS", "Recepção GTVE", "Recepção Evento", "Consulta Cadastro", "Tempo Médio"];
 
@@ -19,7 +19,7 @@ function decodeHtml(value) {
 }
 
 function parseCteAvailability(html) {
-  const table = html.match(/<table\b(?=[^>]*\bid=["']ctl00_ContentPlaceHolder1_gdvDisponibilidade["'])[^>]*>([\s\S]*?)<\/table>/i)?.[1];
+  const table = html.match(/<table\b(?=[^>]*\bid=["']ctl00_ContentPlaceHolder1_gdvDisponibilidade2["'])[^>]*>([\s\S]*?)<\/table>/i)?.[1];
   if (!table) throw new Error("Tabela oficial de disponibilidade CT-e não encontrada.");
   const caption = decodeHtml(table.match(/<caption\b[^>]*>([\s\S]*?)<\/caption>/i)?.[1] || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   const checkedAt = caption.match(/Última Verificação:\s*([\d/]+\s+[\d:]+)/i)?.[1] || null;
@@ -51,7 +51,7 @@ export function parseNfeAvailability(html) {
       const value = decodeHtml(cell.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
       return image ? { state: image === "verde" ? "operational" : image === "amarela" ? "unstable" : "down", value: image === "verde" ? "Operacional" : image === "amarela" ? "Instável" : "Indisponível" } : { state: value === "-" || !value ? "unavailable" : "info", value };
     });
-    return cells.length ? { authorizer: cells[0].value, services: cells.slice(1, 8), average: cells[8]?.value || "-" } : null;
+    return cells.length ? { authorizer: cells[0].value, services: [...cells.slice(1, 6), ...cells.slice(7, 9)], average: cells[6]?.value || "-" } : null;
   }).filter(Boolean);
   if (!rows.length) throw new Error("Tabela de disponibilidade NF-e sem dados.");
   return { title: "Disponibilidade oficial NF-e", checkedAt, columns: NFE_COLUMNS, rows, sourceUrl: NFE_AVAILABILITY_URL };
