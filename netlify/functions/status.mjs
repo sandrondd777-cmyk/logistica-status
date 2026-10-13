@@ -10,6 +10,8 @@ const SOURCES = [
 ];
 
 const CTE_AVAILABILITY_URL = "https://www.cte.fazenda.gov.br/portal/disponibilidade.aspx?versao=1.00&tipoConteudo=XbSeqxE8pl8=";
+const NFE_AVAILABILITY_URL = "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1&tipoConteudo=P2c98tUpxrI%3D&versao=0.00";
+const NFE_COLUMNS = ["Autorização", "Retorno Autorização", "Inutilização", "Consulta Protocolo", "Status Serviço", "Consulta Cadastro", "Recepção Evento"];
 const CTE_COLUMNS = ["Recepção Sinc", "Status Serviço", "Recepção CT-e OS", "Recepção GTVE", "Recepção Evento", "Consulta Cadastro", "Tempo Médio"];
 
 function decodeHtml(value) {
@@ -36,6 +38,29 @@ export async function fetchCteAvailability() {
   const response = await fetch(CTE_AVAILABILITY_URL, { redirect: "follow", signal: AbortSignal.timeout(10000), headers: { "user-agent": "LogisticaStatus/1.0", accept: "text/html" } });
   if (!response.ok) throw new Error(`Portal CT-e respondeu HTTP ${response.status}.`);
   return parseCteAvailability(await response.text());
+}
+
+export function parseNfeAvailability(html) {
+  const table = html.match(/<table\b(?=[^>]*\bid=["']ctl00_ContentPlaceHolder1_gdvDisponibilidade["'])[^>]*>([\s\S]*?)<\/table>/i)?.[1];
+  if (!table) throw new Error("Tabela oficial de disponibilidade NF-e não encontrada.");
+  const caption = decodeHtml(table.match(/<caption\b[^>]*>([\s\S]*?)<\/caption>/i)?.[1] || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const checkedAt = caption.match(/Última Verificação:\s*([\d/]+\s+[\d:]+)/i)?.[1] || null;
+  const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].slice(1).map(([, row]) => {
+    const cells = [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(([, cell]) => {
+      const image = cell.match(/<img\b[^>]*src=["'][^"']*bola_(verde|vermelho|amarela)[^"']*["']/i)?.[1]?.toLowerCase();
+      const value = decodeHtml(cell.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+      return image ? { state: image === "verde" ? "operational" : image === "amarela" ? "unstable" : "down", value: image === "verde" ? "Operacional" : image === "amarela" ? "Instável" : "Indisponível" } : { state: value === "-" || !value ? "unavailable" : "info", value };
+    });
+    return cells.length ? { authorizer: cells[0].value, services: cells.slice(1, 8), average: cells[8]?.value || "-" } : null;
+  }).filter(Boolean);
+  if (!rows.length) throw new Error("Tabela de disponibilidade NF-e sem dados.");
+  return { title: "Disponibilidade oficial NF-e", checkedAt, columns: NFE_COLUMNS, rows, sourceUrl: NFE_AVAILABILITY_URL };
+}
+
+export async function fetchNfeAvailability() {
+  const response = await fetch(NFE_AVAILABILITY_URL, { redirect: "follow", signal: AbortSignal.timeout(10000), headers: { "user-agent": "LogisticaStatus/1.0", accept: "text/html" } });
+  if (!response.ok) throw new Error(`Portal NF-e respondeu HTTP ${response.status}.`);
+  return parseNfeAvailability(await response.text());
 }
 
 async function probe(source) {

@@ -45,6 +45,7 @@ async function readJson(url, options) {
 
 export default function App() {
   const [services, setServices] = useState([]);
+  const [nfeAvailability, setNfeAvailability] = useState(null);
   const [cteAvailability, setCteAvailability] = useState(null);
   const [serviceHistory, setServiceHistory] = useState(loadServiceHistory);
   const [incidents, setIncidents] = useState([]);
@@ -58,13 +59,15 @@ export default function App() {
   const refresh = useCallback(async () => {
     setError("");
     try {
-      const [statusData, reportData, cteData] = await Promise.all([
+      const [statusData, reportData, nfeData, cteData] = await Promise.all([
         readJson("/.netlify/functions/status"),
         readJson("/.netlify/functions/reports"),
+        readJson("/.netlify/functions/nfe-availability").catch((e) => ({ error: e.message, rows: [] })),
         readJson("/.netlify/functions/cte-availability").catch((e) => ({ error: e.message, rows: [] })),
       ]);
       const latestServices = statusData.services || [];
       setServices(latestServices);
+      setNfeAvailability(nfeData);
       setCteAvailability(cteData);
       setServiceHistory((previous) => {
         const next = { ...previous };
@@ -156,6 +159,18 @@ export default function App() {
         <HistorySparkline serviceName={service.name} samples={serviceHistory[service.id] || []} />
         <a href={service.url} target="_blank" rel="noreferrer">Abrir fonte oficial ↗</a>
       </article>)}</div>
+    </section>
+
+    <section className="support-section cte-availability-section">
+      <div className="support-section-title"><div><h2>{nfeAvailability?.title || "Disponibilidade oficial NF-e"}</h2><p>Estado publicado dos web services por autorizador.</p></div>
+        {nfeAvailability?.checkedAt && <small>Última verificação: {nfeAvailability.checkedAt}</small>}
+      </div>
+      {nfeAvailability?.error && <p className="cte-availability-error">Falha ao consultar o painel oficial: {nfeAvailability.error}</p>}
+      {nfeAvailability?.rows?.length > 0 && <div className="cte-table-scroll"><table className="cte-availability-table"><thead><tr><th>Autorizador</th>{nfeAvailability.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>
+        {nfeAvailability.rows.map((row) => <tr key={row.authorizer}><th scope="row">{row.authorizer}</th>{row.services.map((service, index) => <td key={`${row.authorizer}-${index}`}><span className={`cte-state-dot ${service.state}`} title={service.value} aria-label={service.value} /></td>)}<td>{row.average}</td></tr>)}
+      </tbody></table></div>}
+      {!nfeAvailability?.error && !nfeAvailability?.rows?.length && <p className="support-empty">Aguardando dados do portal oficial.</p>}
+      <a href={nfeAvailability?.sourceUrl || "https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx?AspxAutoDetectCookieSupport=1&tipoConteudo=P2c98tUpxrI%3D&versao=0.00"} target="_blank" rel="noreferrer">Abrir painel oficial NF-e ↗</a>
     </section>
 
     <section className="support-section cte-availability-section">
