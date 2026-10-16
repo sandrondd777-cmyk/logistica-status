@@ -18,47 +18,47 @@ function decodeHtml(value) {
   return value.replace(/&nbsp;|&#160;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&#233;/gi, "é").replace(/&#225;/gi, "á").replace(/&#227;/gi, "ã").replace(/&#237;/gi, "í").replace(/&#243;/gi, "ó").replace(/&#250;/gi, "ú").replace(/&#234;/gi, "ê").replace(/&#231;/gi, "ç");
 }
 
-function parseCteAvailability(html) {
-  const table = html.match(/<table\b(?=[^>]*\bid=["']ctl00_ContentPlaceHolder1_gdvDisponibilidade2["'])[^>]*>([\s\S]*?)<\/table>/i)?.[1];
-  if (!table) throw new Error("Tabela oficial de disponibilidade CT-e não encontrada.");
-  const caption = decodeHtml(table.match(/<caption\b[^>]*>([\s\S]*?)<\/caption>/i)?.[1] || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  const checkedAt = caption.match(/Última Verificação:\s*([\d/]+\s+[\d:]+)/i)?.[1] || null;
-  const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].slice(1).map(([, row]) => {
-    const cells = [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(([, cell]) => {
-      const image = cell.match(/<img\b[^>]*src=["'][^"']*bola_(verde|vermelho|amarela)[^"']*["']/i)?.[1]?.toLowerCase();
-      const text = decodeHtml(cell.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
-      return image ? { state: image === "verde" ? "operational" : image === "amarela" ? "unstable" : "down", value: image === "verde" ? "Operacional" : image === "amarela" ? "Instável" : "Indisponível" } : { state: text === "-" || !text ? "unavailable" : "info", value: text };
-    });
-    return cells.length ? { authorizer: cells[0].value, services: cells.slice(1, 7), average: cells[7]?.value || "-" } : null;
-  }).filter(Boolean);
-  return { title: "Visão Geral de Disponibilidade dos Serviços", checkedAt, columns: CTE_COLUMNS, rows, sourceUrl: CTE_AVAILABILITY_URL };
+function findAvailabilityTable(html, id, headers) {
+  const tables = [...html.matchAll(/<table\b[^>]*>[\s\S]*?<\/table>/gi)].map((match) => match[0]);
+  const byId = tables.find((table) => new RegExp(`\\bid=["']${id}["']`, "i").test(table.slice(0, table.indexOf(">") + 1)));
+  if (byId) return byId;
+  return tables.find((table) => {
+    const text = decodeHtml(table.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+    return headers.every((header) => text.includes(header.toLocaleLowerCase("pt-BR")));
+  });
 }
 
-export async function fetchCteAvailability() {
-  const response = await fetch(CTE_AVAILABILITY_URL, { redirect: "follow", signal: AbortSignal.timeout(10000), headers: { "user-agent": "LogisticaStatus/1.0", accept: "text/html" } });
-  if (!response.ok) throw new Error(`Portal CT-e respondeu HTTP ${response.status}.`);
-  return parseCteAvailability(await response.text());
-}
-
-export function parseNfeAvailability(html) {
-  const table = html.match(/<table\b(?=[^>]*\bid=["']ctl00_ContentPlaceHolder1_gdvDisponibilidade["'])[^>]*>([\s\S]*?)<\/table>/i)?.[1];
-  if (!table) throw new Error("Tabela oficial de disponibilidade NF-e não encontrada.");
+function parseAvailabilityTable(table, columns, sourceUrl, cte = false) {
+  if (!table) throw new Error(`Tabela oficial de disponibilidade ${cte ? "CT-e" : "NF-e"} não encontrada.`);
   const caption = decodeHtml(table.match(/<caption\b[^>]*>([\s\S]*?)<\/caption>/i)?.[1] || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   const checkedAt = caption.match(/Última Verificação:\s*([\d/]+\s+[\d:]+)/i)?.[1] || null;
-  const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].slice(1).map(([, row]) => {
+  const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map(([, row]) => {
     const cells = [...row.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(([, cell]) => {
       const image = cell.match(/<img\b[^>]*src=["'][^"']*bola_(verde|vermelho|amarela)[^"']*["']/i)?.[1]?.toLowerCase();
       const value = decodeHtml(cell.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
       return image ? { state: image === "verde" ? "operational" : image === "amarela" ? "unstable" : "down", value: image === "verde" ? "Operacional" : image === "amarela" ? "Instável" : "Indisponível" } : { state: value === "-" || !value ? "unavailable" : "info", value };
     });
-    return cells.length ? { authorizer: cells[0].value, services: [...cells.slice(1, 6), ...cells.slice(7, 9)], average: cells[6]?.value || "-" } : null;
+    if (!cells.length || /autorizador/i.test(cells[0].value)) return null;
+    return cte ? { authorizer: cells[0].value, services: cells.slice(1, 7), average: cells[7]?.value || "-" } : { authorizer: cells[0].value, services: [...cells.slice(1, 6), ...cells.slice(7, 9)], average: cells[6]?.value || "-" };
   }).filter(Boolean);
-  if (!rows.length) throw new Error("Tabela de disponibilidade NF-e sem dados.");
-  return { title: "Disponibilidade oficial NF-e", checkedAt, columns: NFE_COLUMNS, rows, sourceUrl: NFE_AVAILABILITY_URL };
+  if (!rows.length) throw new Error(`Tabela de disponibilidade ${cte ? "CT-e" : "NF-e"} sem dados.`);
+  return { title: cte ? "Visão Geral de Disponibilidade dos Serviços" : "Disponibilidade oficial NF-e", checkedAt, columns, rows, sourceUrl };
 }
 
+function parseCteAvailability(html) {
+  return parseAvailabilityTable(findAvailabilityTable(html, "ctl00_ContentPlaceHolder1_gdvDisponibilidade2", CTE_COLUMNS), CTE_COLUMNS, CTE_AVAILABILITY_URL, true);
+}
+export async function fetchCteAvailability() {
+  const response = await fetch(CTE_AVAILABILITY_URL, { redirect: "follow", signal: AbortSignal.timeout(20000), headers: { "user-agent": "Mozilla/5.0 (compatible; LogisticaStatus/1.0)", accept: "text/html,application/xhtml+xml" } });
+  if (!response.ok) throw new Error(`Portal CT-e respondeu HTTP ${response.status}.`);
+  return parseCteAvailability(await response.text());
+}
+
+export function parseNfeAvailability(html) {
+  return parseAvailabilityTable(findAvailabilityTable(html, "ctl00_ContentPlaceHolder1_gdvDisponibilidade", NFE_COLUMNS), NFE_COLUMNS, NFE_AVAILABILITY_URL);
+}
 export async function fetchNfeAvailability() {
-  const response = await fetch(NFE_AVAILABILITY_URL, { redirect: "follow", signal: AbortSignal.timeout(10000), headers: { "user-agent": "LogisticaStatus/1.0", accept: "text/html" } });
+  const response = await fetch(NFE_AVAILABILITY_URL, { redirect: "follow", signal: AbortSignal.timeout(20000), headers: { "user-agent": "Mozilla/5.0 (compatible; LogisticaStatus/1.0)", accept: "text/html,application/xhtml+xml" } });
   if (!response.ok) throw new Error(`Portal NF-e respondeu HTTP ${response.status}.`);
   return parseNfeAvailability(await response.text());
 }
